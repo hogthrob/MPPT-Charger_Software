@@ -98,7 +98,7 @@ int main()
         }
 
         can_process_outbox();
-        //can_process_inbox();
+        can_process_inbox();
 
         // called once per second
         if (time(NULL) - last_second >= 1) {
@@ -173,7 +173,7 @@ void setup()
     load_current_offset = -load_current;
 
     can.mode(CAN::Normal);
-    //can.attach(&can_receive);
+    can.attach(&can_receive);
 
     // TXFP: Transmit FIFO priority driven by request order (chronologically)
     // NART: No automatic retransmission
