@@ -51,37 +51,37 @@ int _dcdc_output_control(Dcdc *dcdc, DcBus *out, DcBus *in)
 {
     float dcdc_power_new = fabs(dcdc->ls_voltage * dcdc->ls_current); // voltage always positive, current is negative in boost mode
     static int pwm_delta = 1;
+    int retval = 0;
 
     //printf("P: %.2f, P_prev: %.2f, v_in: %.2f, v_out: %.2f, i_in: %.2f, i_out: %.2f, i_max: %.2f, PWM: %.1f, chg_en: %d\n",
     //     dcdc_power_new, dcdc->power, in->voltage, out->voltage, in->current, out->current,
     //     out->chg_current_max, half_bridge_get_duty_cycle() * 100.0, out->chg_allowed);
-
-    if (out->chg_allowed == false || in->dis_allowed == false
+    if ((out->chg_allowed == false && out->dis_allowed == false) || in->dis_allowed == false
         || (in->voltage < in->dis_voltage_stop && out->current < 0.1))
     {
-        return 0;
+        retval = 0;
     }
     else if (out->voltage > (out->chg_voltage_target - out->chg_droop_res * out->current)                     // output voltage above target
         || (in->voltage < (in->dis_voltage_start - in->dis_droop_res * in->current) && out->current > 0.1))     // input voltage below limit
     {
         dcdc->state = DCDC_STATE_CV;
-        return -1;  // decrease output power
+        retval = -1;  // decrease output power
     }
     else if (out->current > out->chg_current_max         // output current limit exceeded
         || in->current < in->dis_current_max)             // input current (negative signs) limit exceeded
     {
         dcdc->state = DCDC_STATE_CC;
-        return -1;  // decrease output power
+        retval = -1;  // decrease output power
     }
     else if (fabs(dcdc->ls_current) > dcdc->ls_current_max          // current above hardware maximum
         || dcdc->temp_mosfets > 80)                                 // temperature limits exceeded
     {
         dcdc->state = DCDC_STATE_DERATING;
-        return -1;  // decrease output power
+        retval = -1;  // decrease output power
     }
     else if (out->current < 0.1 && out->voltage < out->dis_voltage_start)  // no load condition (e.g. start-up of nanogrid) --> raise voltage
     {
-        return 1;   // increase output power
+        retval = 1;   // increase output power
     }
     else {
         // start MPPT
@@ -89,10 +89,13 @@ int _dcdc_output_control(Dcdc *dcdc, DcBus *out, DcBus *in)
         if (dcdc->power > dcdc_power_new) {
             pwm_delta = -pwm_delta;
         }
-        dcdc->power = dcdc_power_new;
-        return pwm_delta;
+        
+        retval = pwm_delta;
     }
-}
+    // store the power BEFORE the executing the current change
+    dcdc->power = dcdc_power_new;
+    return retval;
+    }
 
 bool _dcdc_check_start_conditions(Dcdc *dcdc, DcBus *out, DcBus *in)
 {
