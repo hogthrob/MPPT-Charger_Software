@@ -47,7 +47,15 @@ void UExtInterfaceManager::process_1s() {
 void UExtInterfaceManager::check_list() {
     if (UExtInterfaceManager::interfaces == NULL)
     {
-        UExtInterfaceManager::interfaces = new std::vector<UExtInterface*>;
+        // this is to avoid dynamic allocations as much
+        // as possible. We should not need more than 5
+        // list entries. However, if necessary, 
+        // vector dynamically reallocates
+        // memory. Please note that even the 5 entries are 
+        // dynamically allocated.
+        static std::vector<UExtInterface*> vector;
+        vector.reserve(5);
+        UExtInterfaceManager::interfaces = &vector;
     }
 }
 
