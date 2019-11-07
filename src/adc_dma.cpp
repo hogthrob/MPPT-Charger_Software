@@ -379,6 +379,7 @@ void adc_setup()
     hadc.Init.ExternalTrigConvEdge  = ADC_EXTERNALTRIGCONVEDGE_NONE;
     hadc.Init.DMAContinuousRequests = ENABLE; //DISABLE;
     hadc.Init.Overrun               = ADC_OVR_DATA_OVERWRITTEN;
+    hadc.Init.OversamplingMode      = DISABLE;
 
     if (HAL_ADC_Init(&hadc) != HAL_OK) {
         error("Cannot initialize ADC");
