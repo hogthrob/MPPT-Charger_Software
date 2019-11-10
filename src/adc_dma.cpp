@@ -25,6 +25,8 @@
 #include "adc_dma.h"
 #include "pcb.h"        // contains defines for pins
 #include <math.h>       // log for thermistor calculation
+#include <functional>
+
 
 // factory calibration values for internal voltage reference and temperature sensor
 // (see MCU datasheet, not RM)
@@ -62,8 +64,9 @@ static float load_current_offset;
 // for ADC and DMA
 static volatile uint16_t adc_readings[NUM_ADC_CH] = {0};
 static volatile uint32_t adc_filtered[NUM_ADC_CH] = {0};
-static volatile AdcAlert adc_alerts_upper[NUM_ADC_CH] = {0};
-static volatile AdcAlert adc_alerts_lower[NUM_ADC_CH] = {0};
+static AdcAlert<std::greater_equal<uint16_t>> adc_alerts_upper[NUM_ADC_CH] = {0};
+static AdcAlert<std::less_equal<uint16_t>> adc_alerts_lower[NUM_ADC_CH] = {0};
+
 
 extern DeviceStatus dev_stat;
 
@@ -147,33 +150,9 @@ void adc_update_value(unsigned int pos)
     }
 
     // check upper alerts
-    adc_alerts_upper[pos].debounce_ms++;
-    if (adc_alerts_upper[pos].callback != NULL &&
-        adc_readings[pos] >= adc_alerts_upper[pos].limit)
-    {
-        if (adc_alerts_upper[pos].debounce_ms > 1) {
-            // create function pointer and call function
-            adc_alerts_upper[pos].callback();
-        }
-    }
-    else if (adc_alerts_upper[pos].debounce_ms > 0) {
-        // reset debounce ms counter only if already close to triggering to allow setting negative
-        // values to specify a one-time inhibit delay
-        adc_alerts_upper[pos].debounce_ms = 0;
-    }
-
+    adc_alerts_upper[pos].limit_check(adc_readings[pos]);
     // same for lower alerts
-    adc_alerts_lower[pos].debounce_ms++;
-    if (adc_alerts_lower[pos].callback != NULL &&
-        adc_readings[pos] <= adc_alerts_lower[pos].limit)
-    {
-        if (adc_alerts_lower[pos].debounce_ms > 1) {
-            adc_alerts_lower[pos].callback();
-        }
-    }
-    else if (adc_alerts_lower[pos].debounce_ms > 0) {
-        adc_alerts_lower[pos].debounce_ms = 0;
-    }
+    adc_alerts_lower[pos].limit_check(adc_readings[pos]);
 }
 
 //----------------------------------------------------------------------------

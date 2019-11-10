@@ -30,11 +30,37 @@
 
 /** Struct to definie upper and lower limit alerts for any ADC channel
  */
-typedef struct {
+template<typename CompareOp> struct AdcAlert {
     void (*callback)() = NULL;      ///< Function to be called when limits are exceeded
     uint16_t limit = 0;             ///< ADC reading for lower limit
     int debounce_ms = 0;            ///< Milliseconds delay for triggering alert
-} AdcAlert;
+
+    /**
+     * Check if the given value is outside of the limit and call respective callback
+     * after checking ("debouncing") that this is not just a glitch in the input data
+     * 
+     * @param value value to be checked
+     */
+
+    void limit_check(uint16_t value) {
+        debounce_ms++;
+        CompareOp op;
+
+        if (callback != NULL &&
+            op(value,limit))
+        {
+            if (debounce_ms > 1) {
+                // create function pointer and call function
+                callback();
+            }
+        }
+        else if (debounce_ms > 0) {
+            // reset debounce ms counter only if already close to triggering to allow setting negative
+            // values to specify a one-time inhibit delay
+            debounce_ms = 0;
+        }
+    };
+};
 
 /** Sets offset to actual measured value, i.e. sets zero current point.
  *
